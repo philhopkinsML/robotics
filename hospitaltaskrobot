@@ -1,0 +1,47 @@
+import time
+import pyttsx3
+from random import randint
+from transformers import pipeline
+
+def verbal_instruction_to_action(instruction):
+    """
+    Parses the verbal instruction into an actionable plan using a Hugging Face transformer.
+    """
+    # Initialize Hugging Face pipeline for text generation
+    generator = pipeline("text2text-generation", model="google/flan-t5-base")
+
+    # Engineer a prompt to extract task, object, destination, and time
+    prompt = (
+        f"I am a hospital robot receiving this instruction from a staff member. \n"
+        f"Extract the following information from the instruction: \n"
+        f"Instruction: '{instruction}' \n"
+        f"Provide: \n"
+        f"1. Task \n"
+        f"2. Object \n"
+        f"3. Destination \n"
+        f"4. Time"
+    )
+
+    response = generator(prompt, max_length=50)
+    extracted_info = response[0]['generated_text']
+
+    # Parse the generated text into a dictionary
+    try:
+        info_lines = extracted_info.split("\n")
+        parsed_info = {}
+        for line in info_lines:
+            if ":" in line:
+                key, value = line.split(":", 1)
+                parsed_info[key.strip().lower()] = value.strip()
+
+        # Return the actionable plan
+        return {
+            "task": parsed_info.get("task", "unknown"),
+            "object": parsed_info.get("object", "unknown"),
+            "destination": parsed_info.get("destination", "unknown"),
+            "time": parsed_info.get("time", "unknown"),
+            "bin_location": f"closet_{parsed_info.get('object', 'unknown').replace(' ', '_')}_bin"
+        }
+    except Exception as e:
+        print("Error parsing response from transformer:", e)
+        return None
